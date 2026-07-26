@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Contributions</title>
+    <style>
+        :root {
+            --forest: #1c6b3a;
+            --forest-dark: #124423;
+            --leaf: #35c174;
+            --leaf-dark: #1a944f;
+            --gold: #f2a900;
+            --cream: #f7f9f4;
+            --ink: #1c3b1e;
+            --muted: #5b6b5d;
+            --card-bg: #ffffff;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+            background-color: var(--cream);
+        }
+
+        #logo {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            margin-right: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        #banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #b4e28a, #d7f2c0);
+            padding: 22px 16px;
+            flex-wrap: wrap;
+            text-align: center;
+        }
+
+        #banner h1 {
+            margin: 0;
+            font-size: clamp(18px, 4vw, 24px);
+            color: var(--forest-dark);
+        }
+
+        #btns-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 0 12px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 15px;
+            cursor: pointer;
+            background-color: var(--leaf);
+            color: white;
+            border-radius: 8px;
+            border: none;
+            transition: background-color 0.2s ease, transform 0.15s ease;
+        }
+
+        button:hover { background-color: var(--leaf-dark); transform: translateY(-1px); }
+
+        #currentbtn { background-color: var(--forest-dark); }
+        #notcurrentbtn { background-color: var(--leaf); }
+        #logout-btn { background-color: #b23b3b; }
+        #logout-btn:hover { background-color: #8f2e2e; }
+
+        #content {
+            text-align: center;
+            margin: 30px auto;
+            max-width: 960px;
+            padding: 0 16px;
+        }
+
+        #welcome {
+            font-size: clamp(20px, 4vw, 26px);
+            color: var(--forest);
+            margin-bottom: 20px;
+        }
+
+        .cards-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #dff0e2;
+            border-left: 4px solid var(--leaf);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin: 0;
+            width: 280px;
+            text-align: left;
+            box-shadow: 0 2px 8px rgba(18, 68, 35, 0.05);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: var(--ink);
+        }
+
+        .card p {
+            margin-bottom: 0;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 18px rgba(18, 68, 35, 0.1);
+        }
+
+        .empty-state {
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        @media (max-width: 600px) {
+            #btns-container { gap: 8px; }
+            button { padding: 9px 14px; font-size: 13px; }
+            .card { width: 100%; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="banner">
+        <img id='logo' src="/static/logo.jpeg" alt="PYF Logo">
+        <h1>Pakistan Youth Foundation</h1>
+    </div>
+
+    <div id="btns-container">
+        <button id="notcurrentbtn" href="./profile.html">Profile</button>
+        <button id="notcurrentbtn" href="./applications.html">Applications</button>
+        <button id="currentbtn" href="./contributions.html">Contributions</button>
+        <button id="notcurrentbtn" href="./progress.html">Progress</button>
+        <button id="notcurrentbtn" href="./report.html">Report</button>
+        <button id="notcurrentbtn" href="./experience.html">Experience</button>
+        <button id="logout-btn">Logout</button>
+    </div>
+
+    <div id="content">
+        <h2 id="welcome">Your Contributions</h2>
+        <div class="cards-wrap">
+            {% if contribution_data %}
+                {% for contribution in contribution_data %}
+                <div class="card">
+                    <h3>{{ contribution.title }}</h3>
+                    <p>{{ contribution.description }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-state">No contributions recorded yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        async function loadPage(endpoint) {
+            try {
+                const response = await fetch(`http://127.0.0.1:5050/${endpoint}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert("Unauthorized. Session expired, please log in again.");
+                        return;
+                    }
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const htmlCode = await response.text();
+
+                document.open();
+                document.write(htmlCode);
+                document.close();
+
+            } catch (error) {
+                console.error('Navigation error:', error);
+                alert("Failed to load page. Is Flask running on port 5050?");
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('http://127.0.0.1:5050/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            } finally {
+                location.reload();
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('button[href]');
+
+            if (button) {
+                event.preventDefault();
+                const hrefAttr = button.getAttribute('href');
+                const endpoint = hrefAttr.replace('./', '').replace('.html', '');
+
+                if (endpoint) {
+                    loadPage(endpoint);
+                }
+                return;
+            }
+
+            if (event.target && event.target.id === 'logout-btn') {
+                logout();
+            }
+        });
+    </script>
+</body>
+
+</html>
