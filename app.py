@@ -38,6 +38,13 @@ from datetime import datetime
 
 app = flask.Flask(__name__, static_folder="static", template_folder="templates")
 
+# --- ADD THESE SESSION COOKIE CONFIGURATIONS ---
+app.config.update(
+    SESSION_COOKIE_SECURE=True,      # Required for HTTPS
+    SESSION_COOKIE_HTTPONLY=True,    # Prevents JavaScript client-side theft
+    SESSION_COOKIE_SAMESITE='None'   # Allows session cookies to stick across redirects
+)
+
 # Pull the secret key from Vercel environment variables, fallback for local testing
 app.secret_key = os.environ.get("SECRET_KEY", "super_secret_local_key")
 
