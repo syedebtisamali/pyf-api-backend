@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | PYF</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+        :root {
+            --bg-base: #0e0e12;
+            --bg-surface: #16161d;
+            --bg-elevated: #1e1e28;
+            --bg-input: #1a1a24;
+            --accent: #7c5cbf;
+            --accent-light: #9d7fd8;
+            --text-primary: #e8e6f0;
+            --text-secondary: #9490a8;
+            --border: rgba(255,255,255,0.06);
+            --danger: #c0415a;
+            --green: #4ade80;
+            --gold: #f2a900;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg-base); color: var(--text-primary); padding: 24px; }
+        h1, h2, h3 { font-family: 'Syne', sans-serif; color: var(--accent-light); margin-bottom: 12px; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .stat-card strong { display: block; font-size: 24px; color: var(--text-primary); margin-top: 4px; }
+
+        /* General Cards */
+        .card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+        
+        /* User Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+        th { color: var(--text-secondary); }
+
+        /* Inputs & Buttons */
+        input, select { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; outline: none; }
+        button { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        button:hover { opacity: 0.9; }
+        button.btn-danger { background: var(--danger); }
+        button.btn-gold { background: var(--gold); color: black; }
+
+        .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-admin { background: rgba(124, 92, 191, 0.2); color: var(--accent-light); }
+        .badge-approved { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+        .badge-pending { background: rgba(242, 169, 0, 0.15); color: var(--gold); }
+        .badge-rejected { background: rgba(192, 65, 90, 0.15); color: var(--danger); }
+    </style>
+</head>
+<body>
+
+    <h1>🌐 Community System Overview</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 20px;">Logged in as: <strong>{{ user_name }}</strong></p>
+
+    <!-- Overall System Analytics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span>Total Community Users</span>
+            <strong>{{ stats.total_users }}</strong>
+        </div>
+        <div class="stat-card">
+            <span>Community Funds Raised</span>
+            <strong>Rs. {{ stats.total_funds }} / {{ stats.target_funds }}</strong>
+        </div>
+        <div class="stat-card">
+            <span>Total Submissions</span>
+            <strong>{{ stats.total_applications }} Apps</strong>
+        </div>
+    </div>
+
+    <!-- Create User Module -->
+    <div class="card">
+        <h3>➕ Create New Account</h3>
+        <div class="form-row">
+            <input type="text" id="new-user-name" placeholder="Full Name / Username">
+            <input type="password" id="new-user-pass" placeholder="Password">
+            <select id="new-user-role">
+                <option value="Member">Member</option>
+                <option value="Admin">Admin</option>
+            </select>
+            <button onclick="createNewUser()">Create Account</button>
+        </div>
+    </div>
+
+    <!-- Member Progress & Database Control -->
+    <div class="card">
+        <h3>👥 Individual Member Progress & Management</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th>Role</th>
+                    <th>Funds Raised</th>
+                    <th>Change Password</th>
+                    <th>Fix DB Field</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td><strong>{{ u.USERNAME }}</strong></td>
+                    <td><span class="badge badge-admin">{{ u.ROLE or 'Member' }}</span></td>
+                    <td>Rs. {{ u.PROGRESS.OBTAINED_FUND if u.PROGRESS else '0' }}</td>
+                    <td>
+                        <input type="password" id="pass-{{ loop.index }}" placeholder="New Pass" style="width: 100px;">
+                        <button onclick="changePassword('{{ u.USERNAME }}', 'pass-{{ loop.index }}')">Save</button>
+                    </td>
+                    <td>
+                        <input type="text" id="field-{{ loop.index }}" placeholder="Field (e.g PROGRESS.TOTAL_FUND)" style="width: 130px;">
+                        <input type="text" id="val-{{ loop.index }}" placeholder="Value" style="width: 80px;">
+                        <button class="btn-gold" onclick="patchData('{{ u.USERNAME }}', 'field-{{ loop.index }}', 'val-{{ loop.index }}')">Patch</button>
+                    </td>
+                    <td>
+                        <button class="btn-danger" onclick="deleteUser('{{ u.USERNAME }}')">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Applications & Status Management -->
+    <div class="card">
+        <h3>📋 Manage Applications & Approve/Reject Status</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Applicant</th>
+                    <th>App ID / Title</th>
+                    <th>Current Status</th>
+                    <th>Change Status Dropdown</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                    {% if u.APPLICATION %}
+                        {% for app_key, app in u.APPLICATION.items() %}
+                        <tr>
+                            <td>{{ u.USERNAME }}</td>
+                            <td><strong>{{ app.ID }}</strong>: {{ app.TITLE }}</td>
+                            <td>
+                                <span class="badge badge-{{ app.STATUS|lower }}">
+                                    {{ app.STATUS }}
+                                </span>
+                            </td>
+                            <td>
+                                <select id="status-{{ u.USERNAME }}-{{ app_key }}">
+                                    <option value="Pending" {% if app.STATUS == 'Pending' %}selected{% endif %}>Pending</option>
+                                    <option value="Approved" {% if app.STATUS == 'Approved' %}selected{% endif %}>Approved</option>
+                                    <option value="Rejected" {% if app.STATUS == 'Rejected' %}selected{% endif %}>Rejected</option>
+                                </select>
+                                <button onclick="updateAppStatus('{{ u.USERNAME }}', '{{ app_key }}', 'status-{{ u.USERNAME }}-{{ app_key }}')">Update</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Contributions Management -->
+    <div class="card">
+        <h3>✍️ Add / Update Contributions for Members</h3>
+        <div class="form-row">
+            <select id="contrib-user">
+                {% for u in users %}
+                <option value="{{ u.USERNAME }}">{{ u.USERNAME }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="contrib-title" placeholder="Contribution Title">
+            <input type="text" id="contrib-desc" placeholder="Contribution Description" style="width: 250px;">
+            <button onclick="addContribution()">Update Contribution</button>
+        </div>
+    </div>
+
+    <script>
+        async function apiPost(url, body) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.error || "Operation failed");
+            }
+        }
+
+        function createNewUser() {
+            const username = document.getElementById('new-user-name').value;
+            const password = document.getElementById('new-user-pass').value;
+            const role = document.getElementById('new-user-role').value;
+            apiPost('/admin/create_user', { username, password, role });
+        }
+
+        function updateAppStatus(username, app_key, selectId) {
+            const status = document.getElementById(selectId).value;
+            apiPost('/admin/update_app_status', { username, app_key, status });
+        }
+
+        function addContribution() {
+            const username = document.getElementById('contrib-user').value;
+            const title = document.getElementById('contrib-title').value;
+            const description = document.getElementById('contrib-desc').value;
+            apiPost('/admin/update_contributions', { username, title, description });
+        }
+
+        function patchData(username, fieldId, valId) {
+            const field_path = document.getElementById(fieldId).value;
+            const value = document.getElementById(valId).value;
+            apiPost('/admin/patch_user_data', { username, field_path, value });
+        }
+
+        function changePassword(username, passId) {
+            const new_password = document.getElementById(passId).value;
+            apiPost('/admin/change_password', { username, new_password });
+        }
+
+        function deleteUser(username) {
+            if (confirm(`Are you sure you want to delete ${username}?`)) {
+                apiPost('/admin/delete_user', { username });
+            }
+        }
+    </script>
+</body>
+</html>
