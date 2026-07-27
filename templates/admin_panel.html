@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PYF — Control Desk</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0a4117">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PYF">
+<script src="/static/pwa-register.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   PYF Control Desk — design tokens
+   Subject: a youth foundation's funding/ops ledger. The signature
+   motif is the "ledger tape" — every fund movement the foundation
+   receives, rendered like a paper transaction strip — because the
+   real content here literally *is* a running ledger of +/- amounts.
+   ============================================================ */
+:root{
+  --bg:#0f1c17;
+  --bg-deep:#0a1410;
+  --panel:#16241d;
+  --panel-hi:#1c3026;
+  --line:rgba(242,239,230,0.09);
+  --line-strong:rgba(242,239,230,0.18);
+  --text:#f2efe6;
+  --text-dim:#9fac9f;
+  --text-faint:#6c7c6e;
+  --gold:#d4a24c;
+  --gold-dim:#8a713c;
+  --green:#5fae7c;
+  --green-dim:#335c42;
+  --amber:#d98b3f;
+  --red:#c1503f;
+  --font-display:'Fraunces', Georgia, serif;
+  --font-body:'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--gold-dim);color:var(--text);}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--panel-hi);border-radius:6px;}
+a{color:inherit;}
+button{font-family:inherit;}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;margin:0;}
+.mono{font-family:var(--font-mono);}
+.hidden{display:none !important;}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+/* ---------- Login screen ---------- */
+#login-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(95,174,124,0.10), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(212,162,76,0.08), transparent 50%),
+    var(--bg-deep);
+  padding:24px;
+}
+.login-card{
+  width:100%;max-width:400px;background:var(--panel);
+  border:1px solid var(--line);border-radius:14px;padding:40px 36px 32px;
+  box-shadow:0 24px 60px rgba(0,0,0,0.35);
+}
+.login-eyebrow{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;
+  color:var(--green);text-transform:uppercase;margin-bottom:10px;
+}
+.login-card h1{font-size:28px;color:var(--text);margin-bottom:6px;line-height:1.15;}
+.login-card p.sub{color:var(--text-dim);font-size:13.5px;margin:0 0 28px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px;letter-spacing:.02em;}
+.field input{
+  width:100%;background:var(--bg-deep);border:1px solid var(--line-strong);
+  color:var(--text);padding:11px 13px;border-radius:8px;font-size:14.5px;font-family:var(--font-body);
+  transition:border-color .15s ease;
+}
+.field input:focus{border-color:var(--gold);}
+.btn{
+  appearance:none;border:none;cursor:pointer;border-radius:8px;
+  font-family:var(--font-body);font-weight:600;font-size:14px;
+  padding:11px 18px;transition:transform .1s ease, background .15s ease, opacity .15s ease;
+  display:inline-flex;align-items:center;gap:8px;justify-content:center;
+}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--gold);color:#20180a;width:100%;}
+.btn-primary:hover{background:#e0af5c;}
+.btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--line-strong);}
+.btn-ghost:hover{color:var(--text);border-color:var(--text-dim);}
+.btn-danger{background:rgba(193,80,63,0.15);color:#e8a898;border:1px solid rgba(193,80,63,0.4);}
+.btn-danger:hover{background:rgba(193,80,63,0.28);}
+.btn-sm{padding:6px 11px;font-size:12.5px;border-radius:6px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.login-error{
+  background:rgba(193,80,63,0.12);border:1px solid rgba(193,80,63,0.35);color:#e8a898;
+  font-size:13px;padding:10px 12px;border-radius:8px;margin-bottom:16px;
+}
+.login-hint{margin-top:22px;font-size:12px;color:var(--text-faint);line-height:1.5;}
+
+/* ---------- App shell ---------- */
+#app{display:flex;min-height:100vh;}
+.sidebar{
+  width:236px;flex-shrink:0;background:var(--bg-deep);
+  border-right:1px solid var(--line);display:flex;flex-direction:column;
+  padding:22px 14px;position:sticky;top:0;height:100vh;
+}
+.brand{padding:4px 10px 20px;}
+.brand .eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;color:var(--green);text-transform:uppercase;}
+.brand h1{font-size:19px;color:var(--text);margin-top:4px;line-height:1.2;}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:6px;}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:8px;
+  color:var(--text-dim);font-size:13.5px;font-weight:500;cursor:pointer;
+  border:1px solid transparent;transition:background .12s ease, color .12s ease;
+}
+.nav-item:hover{background:var(--panel);color:var(--text);}
+.nav-item.active{background:var(--panel-hi);color:var(--text);border-color:var(--line);}
+.nav-item .ic{width:16px;height:16px;flex-shrink:0;opacity:.85;}
+.nav-item.active .ic{opacity:1;}
+.nav-badge{
+  margin-left:auto;background:var(--gold-dim);color:#f5e2b8;font-size:10.5px;font-weight:700;
+  padding:1px 6px;border-radius:20px;font-family:var(--font-mono);
+}
+.sidebar-foot{margin-top:auto;padding:10px;border-top:1px solid var(--line);}
+.sidebar-me{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text-dim);padding:8px 2px;}
+.sidebar-me .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 0 3px var(--green-dim);}
+
+.main{flex:1;min-width:0;padding:28px 34px 60px;}
+.topline{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+.topline h2{font-size:26px;}
+.topline .desc{color:var(--text-dim);font-size:13.5px;margin-top:4px;}
+.view{display:none;}
+.view.active{display:block;animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ---------- shared bits ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;}
+.grid{display:grid;gap:16px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:2fr 1fr;}
+@media (max-width:1000px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-2{grid-template-columns:1fr;}}
+
+.kpi{padding:18px 20px;}
+.kpi .label{font-size:11.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;}
+.kpi .value{font-family:var(--font-display);font-size:30px;margin-top:8px;color:var(--text);}
+.kpi .value .unit{font-size:16px;color:var(--text-dim);font-family:var(--font-body);margin-left:2px;}
+.kpi .foot{font-size:12px;color:var(--text-faint);margin-top:6px;}
+.kpi.accent-gold .value{color:var(--gold);}
+.kpi.accent-green .value{color:var(--green);}
+
+.section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:28px 0 12px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line);}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{
+  text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);
+  padding:8px 12px;border-bottom:1px solid var(--line-strong);font-weight:600;
+}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr.row-hover:hover{background:rgba(255,255,255,0.02);}
+
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:600;letter-spacing:.02em;}
+.pill-safe{background:rgba(95,174,124,0.15);color:var(--green);}
+.pill-warning{background:rgba(217,139,63,0.15);color:var(--amber);}
+.pill-critical{background:rgba(193,80,63,0.15);color:#e8a898;}
+.pill-pending{background:rgba(217,139,63,0.15);color:var(--amber);}
+.pill-approved{background:rgba(95,174,124,0.15);color:var(--green);}
+.pill-rejected{background:rgba(193,80,63,0.15);color:#e8a898;}
+.pill-active{background:rgba(95,174,124,0.15);color:var(--green);}
+.pill-inactive{background:rgba(255,255,255,0.06);color:var(--text-faint);}
+.pill-admin{background:rgba(212,162,76,0.16);color:var(--gold);}
+
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.status-dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-dim);}
+.status-dot.off{background:var(--text-faint);}
+
+input,select,textarea{
+  background:var(--bg-deep);border:1px solid var(--line-strong);color:var(--text);
+  padding:8px 11px;border-radius:7px;font-size:13.5px;font-family:var(--font-body);width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);}
+textarea{font-family:var(--font-mono);resize:vertical;}
+label.f-label{display:block;font-size:11.5px;color:var(--text-dim);margin-bottom:5px;letter-spacing:.02em;}
+.field-row{margin-bottom:14px;}
+.inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+.toolbar .spacer{flex:1;}
+.search-input{max-width:240px;}
+
+.empty-state{padding:40px 20px;text-align:center;color:var(--text-faint);}
+.empty-state .glyph{font-size:26px;margin-bottom:8px;opacity:.6;}
+
+/* modal */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(6,10,8,0.72);backdrop-filter:blur(2px);
+  display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;
+}
+.modal{
+  background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;
+  width:100%;max-width:540px;max-height:86vh;overflow-y:auto;
+  box-shadow:0 30px 70px rgba(0,0,0,0.5);
+}
+.modal.wide{max-width:720px;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);}
+.modal-head h3{font-size:18px;}
+.modal-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1;padding:4px;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:20px 22px;}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;}
+.app-content-box{
+  background:var(--bg-deep);border:1px solid var(--line);border-radius:8px;padding:16px;
+  font-size:13.5px;line-height:1.65;white-space:pre-wrap;color:var(--text-dim);max-height:280px;overflow-y:auto;
+}
+
+.toast-stack{position:fixed;bottom:22px;right:22px;z-index:200;display:flex;flex-direction:column;gap:8px;}
+.toast{
+  background:var(--panel-hi);border:1px solid var(--line-strong);color:var(--text);
+  padding:11px 16px;border-radius:8px;font-size:13px;box-shadow:0 12px 30px rgba(0,0,0,.4);
+  animation:toastin .18s ease;
+}
+.toast.err{border-color:rgba(193,80,63,0.5);color:#e8a898;}
+.toast.ok{border-color:rgba(95,174,124,0.5);}
+@keyframes toastin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ---------- Ledger tape (signature element) ---------- */
+.ledger-tape-wrap{overflow-x:auto;padding-bottom:6px;}
+.ledger-tape{display:flex;gap:0;font-family:var(--font-mono);}
+.ledger-chip{
+  flex-shrink:0;min-width:150px;border-right:1px dashed var(--line-strong);padding:12px 16px;
+}
+.ledger-chip:first-child{padding-left:2px;}
+.ledger-chip .lc-user{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;}
+.ledger-chip .lc-amt{font-size:17px;font-weight:600;margin-top:4px;}
+.ledger-chip .lc-amt.pos::before{content:"+ ";}
+.ledger-chip .lc-amt.pos{color:var(--green);}
+.ledger-chip .lc-amt.neg{color:#e8a898;}
+.ledger-chip .lc-date{font-size:10.5px;color:var(--text-faint);margin-top:3px;}
+
+/* progress bars */
+.pbar-track{background:var(--bg-deep);border:1px solid var(--line);border-radius:6px;height:8px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:6px;transition:width .4s ease;}
+.pbar-fill.safe{background:var(--green);}
+.pbar-fill.warning{background:var(--amber);}
+.pbar-fill.critical{background:var(--red);}
+
+/* mini bar chart for weekly report */
+.barchart{display:flex;align-items:flex-end;gap:10px;height:150px;padding:10px 4px 0;}
+.barchart .bcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;min-width:0;}
+.barchart .bcol .bar{width:60%;background:linear-gradient(180deg, var(--gold), var(--gold-dim));border-radius:4px 4px 0 0;min-height:2px;}
+.barchart .bcol .blabel{font-size:10px;color:var(--text-faint);white-space:nowrap;transform:rotate(0deg);text-align:center;}
+.barchart .bcol .bval{font-size:11px;color:var(--text-dim);font-family:var(--font-mono);}
+
+.avatar-badge{
+  width:30px;height:30px;border-radius:50%;background:var(--panel-hi);border:1px solid var(--line-strong);
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;color:var(--gold);flex-shrink:0;
+}
+.member-cell{display:flex;align-items:center;gap:10px;}
+.member-name{font-weight:600;}
+.member-sub{font-size:11.5px;color:var(--text-faint);margin-top:1px;}
+
+.tabs-inline{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab-chip{
+  padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;
+  border:1px solid var(--line-strong);color:var(--text-dim);background:transparent;
+}
+.tab-chip.active{background:var(--gold-dim);border-color:var(--gold-dim);color:#f5e2b8;}
+
+.danger-zone{border:1px solid rgba(193,80,63,0.35);background:rgba(193,80,63,0.06);border-radius:10px;padding:16px 18px;margin-top:20px;}
+.danger-zone h4{color:#e8a898;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
+
+.icon-btn{background:none;border:1px solid var(--line-strong);color:var(--text-dim);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:12px;}
+.icon-btn:hover{color:var(--text);border-color:var(--text-dim);}
+
+@media (max-width:760px){
+  #app{flex-direction:column;}
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;overflow-x:auto;padding:12px;}
+  .brand{display:none;}
+  .nav{flex-direction:row;}
+  .sidebar-foot{display:none;}
+  .main{padding:20px 16px 40px;}
+  .grid-4{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================ LOGIN ============================ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-eyebrow">Pakistan Youth Foundation</div>
+    <h1>Control Desk</h1>
+    <p class="sub">Sign in with an admin account to open the ledger.</p>
+    <div id="login-error" class="login-error hidden"></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-username">Username</label>
+        <input id="login-username" type="text" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="login-submit">Sign in</button>
+    </form>
+    <div class="login-hint">Only accounts with ROLE = "Admin" can open this desk. Member accounts should keep using the regular member pages.</div>
+  </div>
+</div>
+
+<!-- ============================ APP SHELL ============================ -->
+<div id="app" class="hidden">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="eyebrow">PYF · Ops</div>
+      <h1>Control Desk</h1>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-item active" data-view="overview"><span class="ic">◆</span> Overview</div>
+      <div class="nav-item" data-view="members"><span class="ic">◇</span> Profiles</div>
+      <div class="nav-item" data-view="applications"><span class="ic">▤</span> Applications <span class="nav-badge hidden" id="badge-apps"></span></div>
+      <div class="nav-item" data-view="contributions"><span class="ic">✦</span> Contributions</div>
+      <div class="nav-item" data-view="progress"><span class="ic">◐</span> Funding &amp; Progress</div>
+      <div class="nav-item" data-view="reports"><span class="ic">≣</span> Weekly Reports</div>
+      <div class="nav-item" data-view="editor"><span class="ic">{ }</span> Data Editor</div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="sidebar-me"><span class="dot"></span><span id="me-username">—</span></div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px;" id="logout-btn">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============ OVERVIEW ============ -->
+    <section class="view active" id="view-overview">
+      <div class="topline">
+        <div>
+          <h2>Overview</h2>
+          <div class="desc">The whole foundation, at a glance.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="overview-refresh">Refresh</button>
+      </div>
+
+      <div class="grid grid-4" id="overview-kpis">
+        <div class="card kpi"><div class="label">Members</div><div class="value">—</div></div>
+        <div class="card kpi"><div class="label">Online now</div><div class="value">—</div></div>
+        <div class="card kpi accent-gold"><div class="label">Funds raised</div><div class="value">—</div></div>
+        <div class="card kpi"><div class="label">Pending applications</div><div class="value">—</div></div>
+      </div>
+
+      <div class="section-title">Overall funding</div>
+      <div class="card" id="overview-progress-card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+          <div class="mono" style="font-size:13px;color:var(--text-dim);" id="overview-progress-text">—</div>
+          <span class="pill" id="overview-zone-pill">—</span>
+        </div>
+        <div class="pbar-track"><div class="pbar-fill" id="overview-progress-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="section-title">Ledger tape — most recent fund movements</div>
+      <div class="card" style="padding:6px 0;">
+        <div class="ledger-tape-wrap"><div class="ledger-tape" id="ledger-tape"><div class="empty-state" style="margin:0 auto;">Loading…</div></div></div>
+      </div>
+    </section>
+
+    <!-- ============ MEMBERS / PROFILES ============ -->
+    <section class="view" id="view-members">
+      <div class="topline">
+        <div>
+          <h2>Profiles</h2>
+          <div class="desc">Every member account — activity, role, and quick actions.</div>
+        </div>
+        <button class="btn btn-primary" id="open-create-member">+ New member</button>
+      </div>
+
+      <div class="toolbar">
+        <input class="search-input" id="members-search" placeholder="Search by username…">
+        <select id="members-filter" style="max-width:170px;">
+          <option value="all">All roles</option>
+          <option value="Admin">Admins</option>
+          <option value="Member">Members</option>
+        </select>
+        <div class="spacer"></div>
+        <span class="desc" id="members-count"></span>
+      </div>
+
+      <div class="card" style="padding:0;overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th>Member</th><th>Role</th><th>Activity</th><th>Progress</th><th>Applications</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="members-tbody"><tr><td colspan="7"><div class="empty-state">Loading…</div></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ APPLICATIONS ============ -->
+    <section class="view" id="view-applications">
+      <div class="topline">
+        <div>
+          <h2>Applications</h2>
+          <div class="desc">Leave requests and submissions from every member.</div>
+        </div>
+      </div>
+
+      <div class="tabs-inline" id="app-status-tabs">
+        <div class="tab-chip active" data-status="all">All</div>
+        <div class="tab-chip" data-status="Pending">Pending</div>
+        <div class="tab-chip" data-status="Approved">Approved</div>
+        <div class="tab-chip" data-status="Rejected">Rejected</div>
+      </div>
+
+      <div class="card" style="padding:0;overflow-x:auto;">
+        <table>
+          <thead><tr><th>Member</th><th>ID</th><th>Title</th><th>Submitted</th><th>Status</th><th></th></tr></thead>
+          <tbody id="applications-tbody"><tr><td colspan="6"><div class="empty-state">Loading…</div></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ CONTRIBUTIONS ============ -->
+    <section class="view" id="view-contributions">
+      <div class="topline">
+        <div>
+          <h2>Contributions</h2>
+          <div class="desc">What each member has contributed to the foundation.</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <div class="toolbar">
+            <select id="contrib-user-select" style="max-width:260px;"></select>
+          </div>
+          <div class="card" id="contrib-list-card">
+            <div class="empty-state">Choose a member to see their contributions.</div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:14px;">Add a contribution</h3>
+          <form id="contrib-add-form">
+            <div class="field-row"><label class="f-label">Title</label><input id="contrib-title" required></div>
+            <div class="field-row"><label class="f-label">Description</label><textarea id="contrib-desc" rows="4" required></textarea></div>
+            <button class="btn btn-primary" type="submit" style="width:100%;">Add contribution</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PROGRESS ============ -->
+    <section class="view" id="view-progress">
+      <div class="topline">
+        <div>
+          <h2>Funding &amp; progress</h2>
+          <div class="desc">Overall target vs. raised, and each member's individual fund.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+          <div class="mono" style="font-size:13px;color:var(--text-dim);" id="progress-overall-text">—</div>
+          <span class="pill" id="progress-overall-zone">—</span>
+        </div>
+        <div class="pbar-track"><div class="pbar-fill" id="progress-overall-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="card" style="padding:0;overflow-x:auto;">
+        <table>
+          <thead><tr><th>Member</th><th>Target</th><th>Raised</th><th>Remaining</th><th style="min-width:160px;">Progress</th><th>Zone</th><th></th></tr></thead>
+          <tbody id="progress-tbody"><tr><td colspan="7"><div class="empty-state">Loading…</div></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ REPORTS ============ -->
+    <section class="view" id="view-reports">
+      <div class="topline">
+        <div>
+          <h2>Weekly reports</h2>
+          <div class="desc">Funding activity grouped by week — overall or per member.</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <select id="reports-user-select" style="max-width:240px;"><option value="">Overall (all members)</option></select>
+        <button class="btn btn-ghost btn-sm" id="reports-refresh">Refresh</button>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <h3 style="font-size:14px;margin-bottom:6px;">Net amount per week</h3>
+        <div class="barchart" id="reports-chart"></div>
+      </div>
+
+      <div class="card" style="padding:0;overflow-x:auto;">
+        <table>
+          <thead><tr><th>Week</th><th>Transactions</th><th>Net amount</th></tr></thead>
+          <tbody id="reports-weeks-tbody"><tr><td colspan="3"><div class="empty-state">Loading…</div></td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="section-title">Full transaction ledger</div>
+      <div class="card" style="padding:0;overflow-x:auto;max-height:360px;overflow-y:auto;">
+        <table>
+          <thead><tr><th>Date</th><th>Member</th><th>Amount</th></tr></thead>
+          <tbody id="reports-tx-tbody"><tr><td colspan="3"><div class="empty-state">Loading…</div></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ DATA EDITOR ============ -->
+    <section class="view" id="view-editor">
+      <div class="topline">
+        <div>
+          <h2>Data editor</h2>
+          <div class="desc">Edit a member's raw MongoDB document directly. For advanced fixes — most day-to-day changes belong on the other pages.</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <select id="editor-user-select" style="max-width:260px;"></select>
+        <button class="btn btn-ghost btn-sm" id="editor-reload">Reload</button>
+        <div class="spacer"></div>
+        <button class="btn btn-primary btn-sm" id="editor-save">Save changes</button>
+      </div>
+
+      <div class="card">
+        <textarea id="editor-textarea" rows="22" spellcheck="false" placeholder="Choose a member above to load their document…" style="font-size:12.5px;line-height:1.6;"></textarea>
+      </div>
+      <div class="danger-zone">
+        <h4>Danger zone</h4>
+        <div class="desc" style="margin-bottom:12px;">Saving here replaces the entire document for this member. USERNAME and _id are protected automatically, but anything else — including PASSWORD, PROGRESS, and REPORT — will be overwritten exactly as typed. Malformed JSON is rejected before it reaches the database.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast-stack" id="toast-stack"></div>
+
+<!-- ============ MODALS (populated/shown via JS) ============ -->
+<div id="modal-root"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   API helper
+   ============================================================ */
+async function apiFetch(path, opts){
+  opts = opts || {};
+  opts.credentials = "include";
+  opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+  let res, data;
+  try{
+    res = await fetch(path, opts);
+  }catch(err){
+    throw new Error("Network error — couldn't reach the server.");
+  }
+  try{ data = await res.json(); }catch(err){ data = null; }
+  if(!res.ok){
+    const msg = (data && data.error) ? data.error : ("Request failed (" + res.status + ").");
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* ============================================================
+   Toasts
+   ============================================================ */
+function toast(msg, type){
+  const stack = document.getElementById("toast-stack");
+  const el = document.createElement("div");
+  el.className = "toast" + (type ? " " + type : "");
+  el.textContent = msg;
+  stack.appendChild(el);
+  setTimeout(()=>{ el.style.opacity="0"; el.style.transition="opacity .25s"; setTimeout(()=>el.remove(),260); }, 3400);
+}
+
+/* ============================================================
+   Formatting helpers
+   ============================================================ */
+function fmtMoney(n){
+  n = Number(n)||0;
+  return "PKR " + n.toLocaleString("en-PK", {maximumFractionDigits:0});
+}
+function fmtSigned(n){
+  n = Number(n)||0;
+  return (n>=0?"+":"") + n.toLocaleString("en-PK", {maximumFractionDigits:0});
+}
+function zonePillClass(zone){
+  if(!zone) return "pill-warning";
+  const z = zone.toLowerCase();
+  if(z.includes("safe")) return "pill-safe";
+  if(z.includes("warn")) return "pill-warning";
+  return "pill-critical";
+}
+function statusPillClass(status){
+  const s = (status||"").toLowerCase();
+  if(s==="approved") return "pill-approved";
+  if(s==="rejected") return "pill-rejected";
+  return "pill-pending";
+}
+function initials(name){
+  if(!name) return "?";
+  return name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+}
+function escapeHtml(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function activityLabel(m){
+  if(m.online) return '<span class="status-dot on"></span> Online now';
+  if(m.minutes_since_active == null) return '<span class="status-dot off"></span> Never active';
+  const mins = m.minutes_since_active;
+  if(mins < 60) return '<span class="status-dot off"></span> Active ' + Math.round(mins) + 'm ago';
+  const hrs = mins/60;
+  if(hrs < 48) return '<span class="status-dot off"></span> Active ' + Math.round(hrs) + 'h ago';
+  return '<span class="status-dot off"></span> Active ' + Math.round(hrs/24) + 'd ago';
+}
+
+/* ============================================================
+   State
+   ============================================================ */
+const state = { members: [], applications: [], contribUser: null };
+
+/* ============================================================
+   Auth
+   ============================================================ */
+async function checkAuth(){
+  try{
+    const data = await apiFetch("/admin/me");
+    if(data.authenticated){
+      showApp(data.username);
+    }else{
+      showLogin();
+    }
+  }catch(err){
+    showLogin();
+  }
+}
+
+function showLogin(){
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.getElementById("app").classList.add("hidden");
+}
+function showApp(username){
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("me-username").textContent = username;
+  loadOverview();
+}
+
+document.getElementById("login-form").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const btn = document.getElementById("login-submit");
+  const errBox = document.getElementById("login-error");
+  errBox.classList.add("hidden");
+  btn.disabled = true; btn.textContent = "Signing in…";
+  try{
+    const data = await apiFetch("/admin/login", {method:"POST", body: JSON.stringify({
+      username: document.getElementById("login-username").value.trim(),
+      password: document.getElementById("login-password").value,
+    })});
+    showApp(data.username);
+  }catch(err){
+    errBox.textContent = err.message;
+    errBox.classList.remove("hidden");
+  }finally{
+    btn.disabled = false; btn.textContent = "Sign in";
+  }
+});
+
+document.getElementById("logout-btn").addEventListener("click", async function(){
+  try{ await apiFetch("/admin/logout", {method:"POST"}); }catch(err){}
+  showLogin();
+});
+
+/* ============================================================
+   Nav
+   ============================================================ */
+const loaders = {
+  overview: loadOverview,
+  members: loadMembers,
+  applications: loadApplications,
+  contributions: loadContributions,
+  progress: loadProgress,
+  reports: loadReports,
+  editor: loadEditor,
+};
+
+document.getElementById("nav").addEventListener("click", function(e){
+  const item = e.target.closest(".nav-item");
+  if(!item) return;
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  item.classList.add("active");
+  const view = item.dataset.view;
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-" + view).classList.add("active");
+  if(loaders[view]) loaders[view]();
+});
+
+/* ============================================================
+   Modal helper
+   ============================================================ */
+function openModal(html){
+  const root = document.getElementById("modal-root");
+  root.innerHTML = '<div class="modal-backdrop" id="active-modal-backdrop"><div class="modal wide">' + html + '</div></div>';
+  document.getElementById("active-modal-backdrop").addEventListener("click", function(e){
+    if(e.target.id === "active-modal-backdrop") closeModal();
+  });
+}
+function closeModal(){
+  document.getElementById("modal-root").innerHTML = "";
+}
+
+/* ============================================================
+   OVERVIEW
+   ============================================================ */
+async function loadOverview(){
+  try{
+    const data = await apiFetch("/admin/overview");
+    const kpiWrap = document.getElementById("overview-kpis");
+    kpiWrap.innerHTML = `
+      <div class="card kpi"><div class="label">Members</div><div class="value">${data.total_members}<span class="unit">/ ${data.active_members} active</span></div></div>
+      <div class="card kpi accent-green"><div class="label">Online now</div><div class="value">${data.online_now}</div><div class="foot">active in the last 5 min</div></div>
+      <div class="card kpi accent-gold"><div class="label">Funds raised</div><div class="value" style="font-size:22px;">${fmtMoney(data.overall_progress.current_amount)}</div><div class="foot">of ${fmtMoney(data.overall_progress.target_amount)} target</div></div>
+      <div class="card kpi"><div class="label">Pending applications</div><div class="value">${data.pending_applications}<span class="unit">/ ${data.total_applications} total</span></div></div>
+    `;
+    const badge = document.getElementById("badge-apps");
+    if(data.pending_applications > 0){ badge.textContent = data.pending_applications; badge.classList.remove("hidden"); }
+    else{ badge.classList.add("hidden"); }
+
+    const p = data.overall_progress;
+    document.getElementById("overview-progress-text").textContent = `${fmtMoney(p.current_amount)} raised of ${fmtMoney(p.target_amount)} — ${p.percentage}%`;
+    const zonePill = document.getElementById("overview-zone-pill");
+    zonePill.textContent = p.zone; zonePill.className = "pill " + zonePillClass(p.zone);
+    document.getElementById("overview-progress-fill").style.width = Math.min(p.percentage,100) + "%";
+    document.getElementById("overview-progress-fill").className = "pbar-fill " + p.zone.toLowerCase();
+
+    const tape = document.getElementById("ledger-tape");
+    if(!data.recent_transactions.length){
+      tape.innerHTML = '<div class="empty-state" style="margin:0 auto;"><div class="glyph">—</div>No fund movements yet.</div>';
+    }else{
+      tape.innerHTML = data.recent_transactions.map(t=>{
+        const cls = t.amount >= 0 ? "pos" : "neg";
+        return `<div class="ledger-chip">
+          <div class="lc-user">${escapeHtml(t.username)}</div>
+          <div class="lc-amt ${cls}">${t.amount>=0? "" : "− "}${Math.abs(t.amount).toLocaleString("en-PK")}</div>
+          <div class="lc-date">${escapeHtml(t.date||"")}</div>
+        </div>`;
+      }).join("");
+    }
+  }catch(err){ toast(err.message, "err"); }
+}
+document.getElementById("overview-refresh").addEventListener("click", loadOverview);
+
+/* ============================================================
+   MEMBERS / PROFILES
+   ============================================================ */
+async function fetchMembers(force){
+  if(state.members.length && !force) return state.members;
+  const data = await apiFetch("/admin/members");
+  state.members = data.members;
+  return state.members;
+}
+
+async function loadMembers(){
+  try{
+    await fetchMembers(true);
+    renderMembers();
+    populateUserSelects();
+  }catch(err){ toast(err.message, "err"); }
+}
+
+function renderMembers(){
+  const q = (document.getElementById("members-search").value || "").toLowerCase();
+  const roleFilter = document.getElementById("members-filter").value;
+  let rows = state.members.filter(m=>{
+    if(roleFilter !== "all" && m.role !== roleFilter) return false;
+    if(q && !m.username.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById("members-count").textContent = rows.length + " member" + (rows.length===1?"":"s");
+  const tbody = document.getElementById("members-tbody");
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="glyph">◇</div>No members match.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(m=>{
+    const p = m.progress;
+    return `<tr class="row-hover">
+      <td><div class="member-cell">
+        <div class="avatar-badge">${escapeHtml(initials(m.username))}</div>
+        <div><div class="member-name">${escapeHtml(m.username)}</div><div class="member-sub">${escapeHtml((m.experience||{}).USER_ROLE || "—")}</div></div>
+      </div></td>
+      <td><span class="pill ${m.role==='Admin'?'pill-admin':'pill-inactive'}">${escapeHtml(m.role)}</span></td>
+      <td style="font-size:12.5px;">${activityLabel(m)}</td>
+      <td style="min-width:130px;">
+        <div class="pbar-track" style="margin-bottom:4px;"><div class="pbar-fill ${p.zone.toLowerCase()}" style="width:${Math.min(p.percentage,100)}%"></div></div>
+        <div style="font-size:11px;color:var(--text-faint);">${p.percentage}%</div>
+      </td>
+      <td>${m.applications_count}${m.pending_applications? ' <span class="pill pill-pending">'+m.pending_applications+' pending</span>':''}</td>
+      <td><button class="pill ${m.is_active?'pill-active':'pill-inactive'}" style="cursor:pointer;border:none;" data-action="toggle-active" data-username="${escapeHtml(m.username)}">${m.is_active?'Active':'Inactive'}</button></td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="icon-btn" data-action="edit-member" data-username="${escapeHtml(m.username)}">Edit</button>
+        <button class="icon-btn" data-action="delete-member" data-username="${escapeHtml(m.username)}" style="color:#e8a898;">Delete</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+document.getElementById("members-search").addEventListener("input", renderMembers);
+document.getElementById("members-filter").addEventListener("change", renderMembers);
+
+document.getElementById("members-tbody").addEventListener("click", async function(e){
+  const btn = e.target.closest("[data-action]");
+  if(!btn) return;
+  const username = btn.dataset.username;
+  const action = btn.dataset.action;
+  if(action === "toggle-active"){
+    try{
+      await apiFetch("/admin/members/" + encodeURIComponent(username) + "/toggle_active", {method:"POST"});
+      await loadMembers();
+      toast("Updated " + username, "ok");
+    }catch(err){ toast(err.message, "err"); }
+  }else if(action === "edit-member"){
+    openEditMemberModal(username);
+  }else if(action === "delete-member"){
+    if(!confirm("Delete " + username + "? This permanently removes their account, applications, contributions, and funding history.")) return;
+    try{
+      await apiFetch("/admin/members/" + encodeURIComponent(username), {method:"DELETE"});
+      await loadMembers();
+      toast("Deleted " + username, "ok");
+    }catch(err){ toast(err.message, "err"); }
+  }
+});
+
+document.getElementById("open-create-member").addEventListener("click", function(){
+  openModal(`
+    <div class="modal-head"><h3>New member</h3><button class="modal-close" onclick="window.__pyfCloseModal()">×</button></div>
+    <div class="modal-body">
+      <form id="create-member-form">
+        <div class="field-row"><label class="f-label">Username</label><input id="cm-username" required></div>
+        <div class="field-row"><label class="f-label">Password</label><input id="cm-password" type="text" required></div>
+        <div class="field-row"><label class="f-label">Role</label>
+          <select id="cm-role"><option value="Member">Member</option><option value="Admin">Admin</option></select>
+        </div>
+        <div class="field-row"><label class="f-label">Title / position (experience)</label><input id="cm-userrole" placeholder="e.g. Volunteer, CEO…"></div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="window.__pyfCloseModal()">Cancel</button>
+      <button class="btn btn-primary" id="cm-submit">Create member</button>
+    </div>
+  `);
+  document.getElementById("cm-submit").addEventListener("click", async function(){
+    const username = document.getElementById("cm-username").value.trim();
+    const password = document.getElementById("cm-password").value;
+    const role = document.getElementById("cm-role").value;
+    const user_role = document.getElementById("cm-userrole").value.trim();
+    if(!username || !password){ toast("Username and password are required.", "err"); return; }
+    try{
+      await apiFetch("/admin/members", {method:"POST", body: JSON.stringify({username,password,role,user_role})});
+      closeModal();
+      toast("Member created", "ok");
+      await loadMembers();
+    }catch(err){ toast(err.message, "err"); }
+  });
+});
+
+function openEditMemberModal(username){
+  const m = state.members.find(x=>x.username===username);
+  if(!m) return;
+  const exp = m.experience || {};
+  openModal(`
+    <div class="modal-head"><h3>Edit ${escapeHtml(username)}</h3><button class="modal-close" onclick="window.__pyfCloseModal()">×</button></div>
+    <div class="modal-body">
+      <div class="field-row"><label class="f-label">Role</label>
+        <select id="em-role"><option value="Member" ${m.role==='Member'?'selected':''}>Member</option><option value="Admin" ${m.role==='Admin'?'selected':''}>Admin</option></select>
+      </div>
+      <div class="field-row"><label class="f-label">New password <span style="color:var(--text-faint);">(leave blank to keep current)</span></label><input id="em-password" type="text"></div>
+      <div class="field-row"><label class="f-label">Position title</label><input id="em-userrole" value="${escapeHtml(exp.USER_ROLE||'')}"></div>
+      <div class="field-row"><label class="f-label">Start date</label><input id="em-start" value="${escapeHtml(exp.START_DATE||'')}"></div>
+      <div class="field-row"><label class="f-label">End date</label><input id="em-end" value="${escapeHtml(exp.END_DATE||'Present')}"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="window.__pyfCloseModal()">Cancel</button>
+      <button class="btn btn-primary" id="em-submit">Save changes</button>
+    </div>
+  `);
+  document.getElementById("em-submit").addEventListener("click", async function(){
+    const payload = {
+      role: document.getElementById("em-role").value,
+      experience: {
+        USER_ROLE: document.getElementById("em-userrole").value.trim(),
+        START_DATE: document.getElementById("em-start").value.trim(),
+        END_DATE: document.getElementById("em-end").value.trim(),
+      }
+    };
+    const pw = document.getElementById("em-password").value;
+    if(pw) payload.password = pw;
+    try{
+      await apiFetch("/admin/members/" + encodeURIComponent(username), {method:"PATCH", body: JSON.stringify(payload)});
+      closeModal();
+      toast("Saved", "ok");
+      await loadMembers();
+    }catch(err){ toast(err.message, "err"); }
+  });
+}
+
+window.__pyfCloseModal = closeModal;
+
+/* ============================================================
+   APPLICATIONS
+   ============================================================ */
+let appStatusFilter = "all";
+async function loadApplications(){
+  try{
+    const data = await apiFetch("/admin/applications");
+    state.applications = data.applications;
+    renderApplications();
+  }catch(err){ toast(err.message, "err"); }
+}
+function renderApplications(){
+  let rows = state.applications;
+  if(appStatusFilter !== "all") rows = rows.filter(a=>a.status===appStatusFilter);
+  const tbody = document.getElementById("applications-tbody");
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="glyph">▤</div>No applications here.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(a=>`
+    <tr class="row-hover">
+      <td>${escapeHtml(a.username)}</td>
+      <td class="mono" style="color:var(--text-faint);">${escapeHtml(a.id||'')}</td>
+      <td>${escapeHtml(a.title||'')}</td>
+      <td style="font-size:12px;color:var(--text-faint);">${escapeHtml(a.submitted_at||'')}</td>
+      <td><span class="pill ${statusPillClass(a.status)}">${escapeHtml(a.status)}</span></td>
+      <td style="text-align:right;"><button class="icon-btn" data-action="view-app" data-username="${escapeHtml(a.username)}" data-appkey="${escapeHtml(a.app_key)}">Open</button></td>
+    </tr>
+  `).join("");
+}
+document.getElementById("app-status-tabs").addEventListener("click", function(e){
+  const chip = e.target.closest(".tab-chip");
+  if(!chip) return;
+  document.querySelectorAll("#app-status-tabs .tab-chip").forEach(c=>c.classList.remove("active"));
+  chip.classList.add("active");
+  appStatusFilter = chip.dataset.status;
+  renderApplications();
+});
+document.getElementById("applications-tbody").addEventListener("click", function(e){
+  const btn = e.target.closest("[data-action='view-app']");
+  if(!btn) return;
+  openApplicationModal(btn.dataset.username, btn.dataset.appkey);
+});
+function openApplicationModal(username, appKey){
+  const a = state.applications.find(x=>x.username===username && x.app_key===appKey);
+  if(!a) return;
+  openModal(`
+    <div class="modal-head"><h3>${escapeHtml(a.title||'Application')}</h3><button class="modal-close" onclick="window.__pyfCloseModal()">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">${escapeHtml(a.username)} · ${escapeHtml(a.id||'')} · submitted ${escapeHtml(a.submitted_at||'')}</div>
+      <div class="app-content-box">${escapeHtml(a.content||'')}</div>
+      <div class="field-row" style="margin-top:16px;"><label class="f-label">Status</label>
+        <select id="app-status-select">
+          <option value="Pending" ${a.status==='Pending'?'selected':''}>Pending</option>
+          <option value="Approved" ${a.status==='Approved'?'selected':''}>Approved</option>
+          <option value="Rejected" ${a.status==='Rejected'?'selected':''}>Rejected</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="app-delete-btn">Delete</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" onclick="window.__pyfCloseModal()">Cancel</button>
+      <button class="btn btn-primary" id="app-save-btn">Update status</button>
+    </div>
+  `);
+  document.getElementById("app-save-btn").addEventListener("click", async function(){
+    try{
+      await apiFetch(`/admin/applications/${encodeURIComponent(username)}/${encodeURIComponent(appKey)}`, {
+        method:"PATCH", body: JSON.stringify({status: document.getElementById("app-status-select").value})
+      });
+      closeModal();
+      toast("Status updated", "ok");
+      await loadApplications();
+      loadOverview();
+    }catch(err){ toast(err.message, "err"); }
+  });
+  document.getElementById("app-delete-btn").addEventListener("click", async function(){
+    if(!confirm("Delete this application?")) return;
+    try{
+      await apiFetch(`/admin/applications/${encodeURIComponent(username)}/${encodeURIComponent(appKey)}`, {method:"DELETE"});
+      closeModal();
+      toast("Deleted", "ok");
+      await loadApplications();
+      loadOverview();
+    }catch(err){ toast(err.message, "err"); }
+  });
+}
+
+/* ============================================================
+   CONTRIBUTIONS
+   ============================================================ */
+function populateUserSelects(){
+  const usernames = state.members.map(m=>m.username);
+  [ "contrib-user-select", "reports-user-select", "editor-user-select" ].forEach(id=>{
+    const sel = document.getElementById(id);
+    const keepFirst = id === "reports-user-select";
+    const existing = new Set(Array.from(sel.options).map(o=>o.value));
+    usernames.forEach(u=>{
+      if(existing.has(u)) return;
+      const opt = document.createElement("option");
+      opt.value = u; opt.textContent = u;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+async function loadContributions(){
+  try{
+    if(!state.members.length) await fetchMembers();
+    populateUserSelects();
+    const sel = document.getElementById("contrib-user-select");
+    if(!state.contribUser && sel.options.length) state.contribUser = sel.value;
+    sel.value = state.contribUser || (sel.options[0] && sel.options[0].value);
+    await renderContributionsFor(sel.value);
+  }catch(err){ toast(err.message, "err"); }
+}
+document.getElementById("contrib-user-select").addEventListener("change", function(){
+  state.contribUser = this.value;
+  renderContributionsFor(this.value);
+});
+async function renderContributionsFor(username){
+  const card = document.getElementById("contrib-list-card");
+  if(!username){ card.innerHTML = '<div class="empty-state">No members yet.</div>'; return; }
+  card.innerHTML = '<div class="empty-state">Loading…</div>';
+  try{
+    const data = await apiFetch("/admin/contributions");
+    const entry = data.contributions.find(c=>c.username===username);
+    const items = entry ? entry.items : [];
+    if(!items.length){
+      card.innerHTML = '<div class="empty-state"><div class="glyph">✦</div>No contributions logged for ' + escapeHtml(username) + ' yet.</div>';
+      return;
+    }
+    card.innerHTML = items.map(it=>`
+      <div style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <div>
+          <div style="font-weight:600;font-size:13.5px;">${escapeHtml(it.title)}</div>
+          <div style="font-size:12.5px;color:var(--text-dim);margin-top:3px;">${escapeHtml(it.description)}</div>
+        </div>
+        <button class="icon-btn" style="color:#e8a898;flex-shrink:0;" data-action="remove-contrib" data-title="${escapeHtml(it.title)}">Remove</button>
+      </div>
+    `).join("");
+    card.querySelectorAll("[data-action='remove-contrib']").forEach(btn=>{
+      btn.addEventListener("click", async function(){
+        if(!confirm("Remove contribution \"" + btn.dataset.title + "\"?")) return;
+        try{
+          await apiFetch(`/admin/contributions/${encodeURIComponent(username)}/${encodeURIComponent(btn.dataset.title)}`, {method:"DELETE"});
+          toast("Removed", "ok");
+          renderContributionsFor(username);
+        }catch(err){ toast(err.message, "err"); }
+      });
+    });
+  }catch(err){ toast(err.message, "err"); }
+}
+document.getElementById("contrib-add-form").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const username = document.getElementById("contrib-user-select").value;
+  if(!username){ toast("Choose a member first.", "err"); return; }
+  const title = document.getElementById("contrib-title").value.trim();
+  const description = document.getElementById("contrib-desc").value.trim();
+  if(!title || !description) return;
+  try{
+    await apiFetch(`/admin/contributions/${encodeURIComponent(username)}`, {method:"POST", body: JSON.stringify({title,description})});
+    document.getElementById("contrib-title").value = "";
+    document.getElementById("contrib-desc").value = "";
+    toast("Contribution added", "ok");
+    renderContributionsFor(username);
+  }catch(err){ toast(err.message, "err"); }
+});
+
+/* ============================================================
+   PROGRESS
+   ============================================================ */
+async function loadProgress(){
+  try{
+    const data = await apiFetch("/admin/progress");
+    const o = data.overall;
+    document.getElementById("progress-overall-text").textContent = `${fmtMoney(o.current_amount)} raised of ${fmtMoney(o.target_amount)} — ${o.percentage}%`;
+    const zp = document.getElementById("progress-overall-zone");
+    zp.textContent = o.zone; zp.className = "pill " + zonePillClass(o.zone);
+    document.getElementById("progress-overall-fill").style.width = Math.min(o.percentage,100)+"%";
+    document.getElementById("progress-overall-fill").className = "pbar-fill " + o.zone.toLowerCase();
+
+    const tbody = document.getElementById("progress-tbody");
+    if(!data.members.length){
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No members yet.</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.members.map(m=>`
+      <tr class="row-hover">
+        <td>${escapeHtml(m.username)}</td>
+        <td>${fmtMoney(m.target_amount)}</td>
+        <td>${fmtMoney(m.current_amount)}</td>
+        <td>${fmtMoney(m.remaining_amount)}</td>
+        <td><div class="pbar-track"><div class="pbar-fill ${m.zone.toLowerCase()}" style="width:${Math.min(m.percentage,100)}%"></div></div><div style="font-size:11px;color:var(--text-faint);margin-top:3px;">${m.percentage}%</div></td>
+        <td><span class="pill ${zonePillClass(m.zone)}">${escapeHtml(m.zone)}</span></td>
+        <td style="text-align:right;"><button class="icon-btn" data-action="manage-progress" data-username="${escapeHtml(m.username)}">Manage</button></td>
+      </tr>
+    `).join("");
+  }catch(err){ toast(err.message, "err"); }
+}
+document.getElementById("progress-tbody").addEventListener("click", function(e){
+  const btn = e.target.closest("[data-action='manage-progress']");
+  if(!btn) return;
+  openProgressModal(btn.dataset.username);
+});
+function openProgressModal(username){
+  openModal(`
+    <div class="modal-head"><h3>Manage funding — ${escapeHtml(username)}</h3><button class="modal-close" onclick="window.__pyfCloseModal()">×</button></div>
+    <div class="modal-body">
+      <div class="field-row"><label class="f-label">Add funds received</label>
+        <div class="inline-form"><input id="pm-add-amount" type="number" min="0" step="any" placeholder="Amount"><button class="btn btn-primary btn-sm" id="pm-add-btn">Add</button></div>
+      </div>
+      <div class="field-row"><label class="f-label">Subtract / correct</label>
+        <div class="inline-form"><input id="pm-sub-amount" type="number" min="0" step="any" placeholder="Amount"><button class="btn btn-ghost btn-sm" id="pm-sub-btn">Subtract</button></div>
+      </div>
+      <div class="field-row"><label class="f-label">Set fundraising target</label>
+        <div class="inline-form"><input id="pm-target-amount" type="number" min="0" step="any" placeholder="New target"><button class="btn btn-ghost btn-sm" id="pm-target-btn">Set target</button></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="window.__pyfCloseModal()">Close</button></div>
+  `);
+  document.getElementById("pm-add-btn").addEventListener("click", async function(){
+    const amount = parseFloat(document.getElementById("pm-add-amount").value);
+    if(!(amount > 0)){ toast("Enter a valid amount.", "err"); return; }
+    try{
+      await apiFetch(`/admin/progress/${encodeURIComponent(username)}/add`, {method:"POST", body: JSON.stringify({amount})});
+      toast("Funds added", "ok"); closeModal(); loadProgress(); loadOverview();
+    }catch(err){ toast(err.message, "err"); }
+  });
+  document.getElementById("pm-sub-btn").addEventListener("click", async function(){
+    const amount = parseFloat(document.getElementById("pm-sub-amount").value);
+    if(!(amount > 0)){ toast("Enter a valid amount.", "err"); return; }
+    try{
+      await apiFetch(`/admin/progress/${encodeURIComponent(username)}/subtract`, {method:"POST", body: JSON.stringify({amount})});
+      toast("Adjusted", "ok"); closeModal(); loadProgress(); loadOverview();
+    }catch(err){ toast(err.message, "err"); }
+  });
+  document.getElementById("pm-target-btn").addEventListener("click", async function(){
+    const target_amount = parseFloat(document.getElementById("pm-target-amount").value);
+    if(!(target_amount >= 0)){ toast("Enter a valid target.", "err"); return; }
+    try{
+      await apiFetch(`/admin/progress/${encodeURIComponent(username)}/target`, {method:"POST", body: JSON.stringify({target_amount})});
+      toast("Target updated", "ok"); closeModal(); loadProgress(); loadOverview();
+    }catch(err){ toast(err.message, "err"); }
+  });
+}
+
+/* ============================================================
+   REPORTS
+   ============================================================ */
+async function loadReports(){
+  if(!state.members.length){ try{ await fetchMembers(); populateUserSelects(); }catch(err){} }
+  await renderReports();
+}
+document.getElementById("reports-user-select").addEventListener("change", renderReports);
+document.getElementById("reports-refresh").addEventListener("click", renderReports);
+
+async function renderReports(){
+  const username = document.getElementById("reports-user-select").value;
+  try{
+    const qs = username ? ("?username=" + encodeURIComponent(username)) : "";
+    const data = await apiFetch("/admin/reports/weekly" + qs);
+    const weeks = data.weeks.slice().sort((a,b)=>a.week.localeCompare(b.week));
+    const chart = document.getElementById("reports-chart");
+    if(!weeks.length){
+      chart.innerHTML = '<div class="empty-state" style="margin:0 auto;">No dated transactions yet.</div>';
+    }else{
+      const maxAbs = Math.max(1, ...weeks.map(w=>Math.abs(w.total)));
+      chart.innerHTML = weeks.slice(-10).map(w=>{
+        const h = Math.max(4, Math.round(Math.abs(w.total)/maxAbs*120));
+        const color = w.total < 0 ? "background:linear-gradient(180deg, var(--red), #7a3229);" : "";
+        return `<div class="bcol">
+          <div class="bval">${fmtMoney(w.total)}</div>
+          <div class="bar" style="height:${h}px;${color}"></div>
+          <div class="blabel">${escapeHtml(w.label.split('–')[0].trim())}</div>
+        </div>`;
+      }).join("");
+    }
+    const weeksDesc = data.weeks;
+    const weeksTbody = document.getElementById("reports-weeks-tbody");
+    weeksTbody.innerHTML = weeksDesc.length ? weeksDesc.map(w=>`
+      <tr class="row-hover"><td>${escapeHtml(w.label)}</td><td>${w.count}</td><td class="mono" style="color:${w.total<0?'#e8a898':'var(--green)'}">${fmtSigned(w.total)}</td></tr>
+    `).join("") : '<tr><td colspan="3"><div class="empty-state">No weeks yet.</div></td></tr>';
+
+    const txTbody = document.getElementById("reports-tx-tbody");
+    txTbody.innerHTML = data.transactions.length ? data.transactions.map(t=>`
+      <tr class="row-hover"><td style="font-size:12px;color:var(--text-faint);">${escapeHtml(t.date||'—')}</td><td>${escapeHtml(t.username)}</td><td class="mono" style="color:${t.amount<0?'#e8a898':'var(--green)'}">${fmtSigned(t.amount)}</td></tr>
+    `).join("") : '<tr><td colspan="3"><div class="empty-state">No transactions yet.</div></td></tr>';
+  }catch(err){ toast(err.message, "err"); }
+}
+
+/* ============================================================
+   DATA EDITOR
+   ============================================================ */
+async function loadEditor(){
+  if(!state.members.length){ try{ await fetchMembers(); populateUserSelects(); }catch(err){} }
+}
+document.getElementById("editor-user-select").addEventListener("change", loadEditorDoc);
+document.getElementById("editor-reload").addEventListener("click", loadEditorDoc);
+async function loadEditorDoc(){
+  const username = document.getElementById("editor-user-select").value;
+  const ta = document.getElementById("editor-textarea");
+  if(!username){ ta.value = ""; return; }
+  ta.value = "Loading…";
+  try{
+    const data = await apiFetch(`/admin/members/${encodeURIComponent(username)}/raw`);
+    ta.value = JSON.stringify(data.document, null, 2);
+  }catch(err){ toast(err.message, "err"); ta.value = ""; }
+}
+document.getElementById("editor-save").addEventListener("click", async function(){
+  const username = document.getElementById("editor-user-select").value;
+  if(!username){ toast("Choose a member first.", "err"); return; }
+  let parsed;
+  try{
+    parsed = JSON.parse(document.getElementById("editor-textarea").value);
+  }catch(err){
+    toast("That's not valid JSON: " + err.message, "err");
+    return;
+  }
+  if(!confirm("Overwrite the stored document for " + username + "? This can't be undone.")) return;
+  try{
+    const data = await apiFetch(`/admin/members/${encodeURIComponent(username)}/raw`, {method:"PUT", body: JSON.stringify(parsed)});
+    document.getElementById("editor-textarea").value = JSON.stringify(data.document, null, 2);
+    toast("Document saved", "ok");
+    fetchMembers(true);
+  }catch(err){ toast(err.message, "err"); }
+});
+
+/* ============================================================
+   Boot
+   ============================================================ */
+checkAuth();
+
+})();
+</script>
+</body>
+</html>
