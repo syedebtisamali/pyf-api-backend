@@ -1,13 +1,11 @@
 """
-Pakistan Youth Foundation — Dashboard Backend
------------------------------------------------
-Flask serves every authenticated page as a fully-rendered HTML document.
-The frontend (dashboard.html / profile.html / etc.) fetches these routes
-with credentials included and swaps the whole document, so every route
-here returns a complete <html> page (never a JSON fragment) EXCEPT the
-small AJAX helper endpoints used by the Progress page console
-(/progress/data, /progress/add, /progress/update) and /add_application,
-which return JSON for the JS on the page to consume.
+Pakistan Youth Foundation — Backend API (Flask, JSON-only)
+-----------------------------------------------------------
+Pure JSON API — every route returns JSON, none render HTML. Meant to be
+called cross-origin (e.g. from a static frontend on Netlify) via fetch()
+with credentials included, which is why SESSION_COOKIE_SAMESITE is "None"
+and CORS is configured with supports_credentials + an explicit origin
+list below — set ALLOWED_ORIGINS to your deployed frontend URL(s).
 
 Data model (one document per member in the `users` collection):
 
@@ -26,22 +24,45 @@ Data model (one document per member in the `users` collection):
 
 Every time an amount is added on the Progress page, it both updates
 PROGRESS.OBTAINED_FUND *and* appends a timestamped entry to REPORT, so the
-Report page always reflects the funding history.
+Report endpoint always reflects the funding history.
 """
 import os
 import flask
-from flask import session, request, jsonify, render_template
+from flask import session, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from functools import wraps
 from datetime import datetime
 
-app = flask.Flask(__name__, static_folder="static", template_folder="templates")
+app = flask.Flask(__name__)
+
+# --- SESSION COOKIE CONFIGURATION ---
+# Required for a cross-origin frontend (e.g. Netlify) to keep a session
+# cookie across requests to this API. Without SameSite=None + Secure,
+# browsers silently drop the cookie on cross-site requests — login looks
+# like it works, but every subsequent request appears logged out.
+app.config.update(
+    SESSION_COOKIE_SECURE=True,      # Required for HTTPS + SameSite=None
+    SESSION_COOKIE_HTTPONLY=True,    # Prevents JavaScript client-side theft
+    SESSION_COOKIE_SAMESITE="None",  # Required for the cross-origin frontend
+)
 
 # Pull the secret key from Vercel environment variables, fallback for local testing
 app.secret_key = os.environ.get("SECRET_KEY", "super_secret_local_key")
 
-CORS(app, supports_credentials=True, origins=["*"], allow_headers=["Content-Type"])
+# --- CORS ---
+# IMPORTANT: browsers reject `origins=["*"]` combined with credentials — a
+# wildcard Access-Control-Allow-Origin is never honored when the request
+# carries cookies. Set ALLOWED_ORIGINS on your host to your deployed
+# frontend URL(s), comma-separated, e.g.:
+#   ALLOWED_ORIGINS=https://pyf-admin-panel.netlify.app
+ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:5500,http://localhost:8888"
+    ).split(",") if o.strip()
+]
+CORS(app, supports_credentials=True, origins=ALLOWED_ORIGINS, allow_headers=["Content-Type"])
 
 # Pull the Mongo URI from Vercel environment variables, fallback for local testing
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
@@ -61,7 +82,7 @@ def login_required(view_func):
     @wraps(view_func)
     def wrapped(*args, **kwargs):
         if "username" not in session:
-            return "<h3>Unauthorized access. Please login first.</h3>", 401
+            return jsonify({"error": "Unauthorized access. Please login first."}), 401
         return view_func(*args, **kwargs)
 
     return wrapped
@@ -81,9 +102,16 @@ def compute_zone(percentage):
 
 def compute_progress(progress):
     """Turns the raw PROGRESS sub-document into the display-ready numbers
-    the progress.html template (and the JSON console endpoints) expect."""
-    total = float(progress.get("TOTAL_FUND", 0) or 0)
-    obtained = float(progress.get("OBTAINED_FUND", 0) or 0)
+    the frontend expects. Tolerant of TOTAL_FUND/OBTAINED_FUND being
+    stored as strings or missing/malformed values."""
+    try:
+        total = float(progress.get("TOTAL_FUND", 0) or 0)
+    except (TypeError, ValueError):
+        total = 0.0
+    try:
+        obtained = float(progress.get("OBTAINED_FUND", 0) or 0)
+    except (TypeError, ValueError):
+        obtained = 0.0
     percentage = round((obtained / total * 100), 1) if total > 0 else 0
     percentage = min(percentage, 100)
     remaining = max(total - obtained, 0)
@@ -104,20 +132,30 @@ def normalize_reports(reports):
     return reports or []
 
 
+def report_amount(entry):
+    try:
+        return float(entry.get("SUBMITTED_AMOUNT", 0) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 # ---------------------------------------------------------------------------
 # Public routes
 # ---------------------------------------------------------------------------
 @app.route("/")
 def home():
-    return "Welcome to the Flask App!"
+    return jsonify({"success": True, "message": "PYF backend API is running."}), 200
 
 
 @app.route("/dashboard", methods=["POST"])
 def dashboard():
+    """Member login. Kept the historical /dashboard path so existing
+    frontend code doesn't need a route rename, but it returns JSON like
+    every other endpoint instead of a rendered profile page."""
     data = request.get_json(silent=True)
 
     if not data:
-        return "<h1>Error</h1><p>No data received.</p>", 400
+        return jsonify({"error": "No data received."}), 400
 
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
@@ -126,25 +164,27 @@ def dashboard():
 
     if user and user.get("PASSWORD") == password and user.get("IS_ACTIVE", True):
         session["username"] = username
-        return render_template(
-            "profile.html", user_name=username, role=user.get("ROLE", "Member")
-        )
+        return jsonify({
+            "success": True,
+            "user_name": username,
+            "role": user.get("ROLE", "Member"),
+        }), 200
 
-    return "<h1>Login Failed</h1><p>Invalid credentials. Please try again.</p>", 401
+    return jsonify({"error": "Invalid credentials. Please try again."}), 401
 
 
 # ---------------------------------------------------------------------------
-# Authenticated page routes
+# Authenticated routes
 # ---------------------------------------------------------------------------
 @app.route("/profile", methods=["GET"])
 @login_required
 def profile():
     user = get_current_user()
-    return render_template(
-        "profile.html",
-        user_name=session["username"],
-        role=user.get("ROLE", "Member") if user else "Member",
-    )
+    return jsonify({
+        "success": True,
+        "user_name": session["username"],
+        "role": user.get("ROLE", "Member") if user else "Member",
+    }), 200
 
 
 @app.route("/experience", methods=["GET"])
@@ -152,13 +192,13 @@ def profile():
 def experience():
     user = get_current_user()
     exp = (user or {}).get("EXPERIENCE", {})
-    return render_template(
-        "experience.html",
-        user_name=session["username"],
-        user_role=exp.get("USER_ROLE", "Member"),
-        start_date=exp.get("START_DATE", "N/A"),
-        end_date=exp.get("END_DATE", "Present"),
-    )
+    return jsonify({
+        "success": True,
+        "user_name": session["username"],
+        "user_role": exp.get("USER_ROLE", "Member"),
+        "start_date": exp.get("START_DATE", "N/A"),
+        "end_date": exp.get("END_DATE", "Present"),
+    }), 200
 
 
 @app.route("/applications", methods=["GET"])
@@ -166,9 +206,13 @@ def experience():
 def applications():
     user = get_current_user()
     apps = (user or {}).get("APPLICATION", {})
-    return render_template(
-        "applications.html", user_name=session["username"], applications=apps
-    )
+    out = [{"app_key": k, **v} for k, v in apps.items()]
+    out.sort(key=lambda a: a.get("SUBMITTED_AT") or "", reverse=True)
+    return jsonify({
+        "success": True,
+        "user_name": session["username"],
+        "applications": out,
+    }), 200
 
 
 @app.route("/add_application", methods=["POST"])
@@ -207,11 +251,11 @@ def contributions():
     user = get_current_user()
     raw = (user or {}).get("CONTRIBUTIONS", {})
     contribution_data = [{"title": k, "description": v} for k, v in raw.items()]
-    return render_template(
-        "contributions.html",
-        user_name=session["username"],
-        contribution_data=contribution_data,
-    )
+    return jsonify({
+        "success": True,
+        "user_name": session["username"],
+        "contributions": contribution_data,
+    }), 200
 
 
 @app.route("/progress", methods=["GET"])
@@ -219,7 +263,7 @@ def contributions():
 def progress():
     user = get_current_user()
     data = compute_progress((user or {}).get("PROGRESS", {}))
-    return render_template("progress.html", user_name=session["username"], **data)
+    return jsonify({"success": True, "user_name": session["username"], "progress": data}), 200
 
 
 @app.route("/progress/data", methods=["GET"])
@@ -320,20 +364,19 @@ def report():
     user = get_current_user()
     reports = normalize_reports((user or {}).get("REPORT", []))
     reports_sorted = sorted(reports, key=lambda r: r.get("DATE", ""), reverse=True)
-    total_submitted = sum(float(r.get("SUBMITTED_AMOUNT", 0) or 0) for r in reports_sorted)
-    return render_template(
-        "report.html",
-        user_name=session["username"],
-        report=reports_sorted,
-        total_submitted=total_submitted,
-    )
+    total_submitted = sum(report_amount(r) for r in reports_sorted)
+    return jsonify({
+        "success": True,
+        "user_name": session["username"],
+        "report": reports_sorted,
+        "total_submitted": total_submitted,
+    }), 200
 
 
 @app.route("/logout", methods=["GET", "POST"])
 def logout():
     session.pop("username", None)
     return jsonify({"success": True, "message": "Logged out successfully"}), 200
-
 
 
 if __name__ == "__main__":
