@@ -341,7 +341,184 @@ def logout():
     session.pop("username", None)
     return jsonify({"success": True, "message": "Logged out successfully"}), 200
 
+# ---------------------------------------------------------------------------
+# Admin routes
+# ---------------------------------------------------------------------------
+def admin_required(view_func):
+    """Same as login_required, but also requires ROLE == 'Admin' on the
+    currently logged-in user's document."""
 
+    @wraps(view_func)
+    def wrapped(*args, **kwargs):
+        if "username" not in session:
+            return "<h3>Unauthorized access. Please login first.</h3>", 401
+        user = get_current_user()
+        if not user or user.get("ROLE") != "Admin":
+            return "<h3>Forbidden. Admins only.</h3>", 403
+        return view_func(*args, **kwargs)
+
+    return wrapped
+
+
+@app.route("/admin", methods=["GET"])
+@admin_required
+def admin_dashboard():
+    all_users = list(users_col.find({}))
+
+    members = [
+        {
+            "username": u.get("USERNAME"),
+            "role": u.get("ROLE", "Member"),
+            "is_active": u.get("IS_ACTIVE", True),
+        }
+        for u in all_users
+    ]
+
+    applications = []
+    for u in all_users:
+        for app_key, app_data in (u.get("APPLICATION", {}) or {}).items():
+            applications.append(
+                {
+                    "username": u.get("USERNAME"),
+                    "app_key": app_key,
+                    "id": app_data.get("ID"),
+                    "title": app_data.get("TITLE"),
+                    "content": app_data.get("CONTENT"),
+                    "status": app_data.get("STATUS", "Pending"),
+                    "submitted_at": app_data.get("SUBMITTED_AT"),
+                }
+            )
+
+    progress_list = []
+    for u in all_users:
+        p = compute_progress(u.get("PROGRESS", {}))
+        progress_list.append({"username": u.get("USERNAME"), **p})
+
+    contributions_by_user = []
+    for u in all_users:
+        items = [
+            {"title": k, "description": v}
+            for k, v in (u.get("CONTRIBUTIONS", {}) or {}).items()
+        ]
+        contributions_by_user.append({"username": u.get("USERNAME"), "items": items})
+
+    return render_template(
+        "admin.html",
+        admin_name=session["username"],
+        members=members,
+        applications=applications,
+        progress_list=progress_list,
+        contributions_by_user=contributions_by_user,
+    )
+
+
+@app.route("/admin/register_user", methods=["POST"])
+@admin_required
+def admin_register_user():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    role = (data.get("role") or "Member").strip()
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required."}), 400
+
+    if users_col.find_one({"USERNAME": username}):
+        return jsonify({"error": "That username already exists."}), 409
+
+    new_user = {
+        "USERNAME": username,
+        "PASSWORD": password,
+        "ROLE": role,
+        "IS_ACTIVE": True,
+        "APPLICATION": {},
+        "CONTRIBUTIONS": {},
+        "PROGRESS": {"TOTAL_FUND": 0, "OBTAINED_FUND": 0},
+        "REPORT": [],
+        "EXPERIENCE": {
+            "USER_ROLE": role,
+            "START_DATE": datetime.now().strftime("%d-%m-%Y"),
+            "END_DATE": "Present",
+        },
+    }
+    users_col.insert_one(new_user)
+
+    return jsonify({"success": True, "username": username, "role": role}), 201
+
+
+@app.route("/admin/toggle_active", methods=["POST"])
+@admin_required
+def admin_toggle_active():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+
+    target = users_col.find_one({"USERNAME": username})
+    if not target:
+        return jsonify({"error": "User not found."}), 404
+
+    new_status = not target.get("IS_ACTIVE", True)
+    users_col.update_one({"USERNAME": username}, {"$set": {"IS_ACTIVE": new_status}})
+
+    return jsonify({"success": True, "username": username, "is_active": new_status}), 200
+
+
+@app.route("/admin/update_application_status", methods=["POST"])
+@admin_required
+def admin_update_application_status():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+    app_key = data.get("app_key")
+    status = (data.get("status") or "").strip()
+
+    if not username or not app_key or not status:
+        return jsonify({"error": "username, app_key and status are required."}), 400
+
+    result = users_col.update_one(
+        {"USERNAME": username}, {"$set": {f"APPLICATION.{app_key}.STATUS": status}}
+    )
+    if result.matched_count == 0:
+        return jsonify({"error": "User not found."}), 404
+
+    return jsonify({"success": True}), 200
+
+
+@app.route("/admin/add_contribution", methods=["POST"])
+@admin_required
+def admin_add_contribution():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+    title = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+
+    if not username or not title or not description:
+        return jsonify({"error": "username, title and description are required."}), 400
+
+    result = users_col.update_one(
+        {"USERNAME": username}, {"$set": {f"CONTRIBUTIONS.{title}": description}}
+    )
+    if result.matched_count == 0:
+        return jsonify({"error": "User not found."}), 404
+
+    return jsonify({"success": True}), 200
+
+
+@app.route("/admin/delete_contribution", methods=["POST"])
+@admin_required
+def admin_delete_contribution():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+    title = data.get("title")
+
+    if not username or not title:
+        return jsonify({"error": "username and title are required."}), 400
+
+    result = users_col.update_one(
+        {"USERNAME": username}, {"$unset": {f"CONTRIBUTIONS.{title}": ""}}
+    )
+    if result.matched_count == 0:
+        return jsonify({"error": "User not found."}), 404
+
+    return jsonify({"success": True}), 200
 
 if __name__ == "__main__":
     app.run(debug=True, port=5050)
